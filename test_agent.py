@@ -1,5 +1,6 @@
 import os
 import pytest
+from unittest.mock import patch, MagicMock
 
 import agent
 
@@ -45,3 +46,71 @@ def test_build_client_config_structure():
     assert installed["auth_uri"] == "https://accounts.google.com/o/oauth2/auth"
     assert installed["token_uri"] == "https://oauth2.googleapis.com/token"
     assert installed["redirect_uris"] == ["http://localhost"]
+
+
+@patch("agent.requests.post")
+def test_login_with_id_token_success(mock_post):
+    mock_post.return_value = MagicMock(status_code=200, json=lambda: {"accessToken": "abc123"})
+
+    result = agent._login_with_id_token("fake-id-token")
+
+    assert result == "abc123"
+    mock_post.assert_called_once_with(
+        f"{agent.config.SERVER_URL}/api/auth/google",
+        json={"idToken": "fake-id-token"},
+        timeout=10
+    )
+
+
+@patch("agent.requests.post")
+def test_login_with_id_token_failure_status(mock_post):
+    mock_post.return_value = MagicMock(status_code=401)
+
+    result = agent._login_with_id_token("bad-token")
+
+    assert result is None
+
+
+@patch("agent.requests.post")
+def test_login_with_id_token_network_error(mock_post):
+    mock_post.side_effect = agent.requests.RequestException("connection refused")
+
+    result = agent._login_with_id_token("token")
+
+    assert result is None
+
+
+@patch("agent.requests.post")
+def test_register_device_success(mock_post):
+    mock_post.return_value = MagicMock(
+        status_code=200,
+        json=lambda: {"deviceToken": "device-token-xyz", "deviceId": 42}
+    )
+
+    result = agent._register_device("access-token", "my-pc")
+
+    assert result == {"deviceToken": "device-token-xyz", "deviceId": 42}
+    mock_post.assert_called_once_with(
+        f"{agent.config.SERVER_URL}/api/auth/device",
+        json={"deviceName": "my-pc", "deviceType": "PC"},
+        headers={"Authorization": "Bearer access-token"},
+        timeout=10
+    )
+
+
+@patch("agent.requests.post")
+def test_register_device_failure_status(mock_post):
+    mock_post.return_value = MagicMock(status_code=400)
+
+    result = agent._register_device("access-token", "my-pc")
+
+    assert result is None
+
+
+@patch("agent.requests.post")
+def test_register_device_network_error(mock_post):
+    mock_post.side_effect = agent.requests.RequestException("timeout")
+
+    result = agent._register_device("access-token", "my-pc")
+
+    assert result is None

@@ -302,6 +302,46 @@ def _build_client_config(client_id: str, client_secret: str) -> dict:
     }
 
 
+def _login_with_id_token(id_token: str) -> Optional[str]:
+    """ID 토큰을 백엔드로 보내 서비스 액세스 토큰을 받는다. 실패 시 None."""
+    try:
+        response = requests.post(
+            f"{config.SERVER_URL}/api/auth/google",
+            json={"idToken": id_token},
+            timeout=10
+        )
+    except requests.RequestException as e:
+        print(f"[오류] 서버 연결 실패: {e}")
+        return None
+
+    if response.status_code != 200:
+        print(f"[오류] 로그인 실패: {response.status_code}")
+        return None
+
+    print("[로그인] 성공")
+    return response.json()["accessToken"]
+
+
+def _register_device(access_token: str, device_name: str) -> Optional[dict]:
+    """액세스 토큰으로 기기를 등록하고 device_token/device_id를 받는다. 실패 시 None."""
+    try:
+        response = requests.post(
+            f"{config.SERVER_URL}/api/auth/device",
+            json={"deviceName": device_name, "deviceType": "PC"},
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=10
+        )
+    except requests.RequestException as e:
+        print(f"[오류] 서버 연결 실패: {e}")
+        return None
+
+    if response.status_code != 200:
+        print(f"[오류] 기기 등록 실패: {response.status_code}")
+        return None
+
+    return response.json()
+
+
 # ── 로그인 ────────────────────────────────────────
 
 def login(email: str, password: str, device_name: str):
