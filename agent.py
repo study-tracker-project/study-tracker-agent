@@ -344,39 +344,32 @@ def _register_device(access_token: str, device_name: str) -> Optional[dict]:
 
 # ── 로그인 ────────────────────────────────────────
 
-def login(email: str, password: str, device_name: str):
-    """로그인 + device_token 발급"""
+def login(device_name: str):
+    """Google OAuth 로그인 + device_token 발급"""
+    client_id, client_secret = _require_oauth_env()
+
+    flow = InstalledAppFlow.from_client_config(
+        _build_client_config(client_id, client_secret),
+        scopes=["openid", "email", "profile"]
+    )
+
     try:
-        # 로그인
-        response = requests.post(
-            f"{config.SERVER_URL}/api/auth/login",
-            json={"email": email, "password": password},
-            timeout=10
-        )
-        if response.status_code != 200:
-            print(f"[오류] 로그인 실패: {response.status_code}")
-            return
+        credentials = flow.run_local_server(port=0)
+    except Exception as e:
+        print(f"[오류] Google 로그인 실패: {e}")
+        return
 
-        access_token = response.json()["accessToken"]
-        print("[로그인] 성공")
+    access_token = _login_with_id_token(credentials.id_token)
+    if not access_token:
+        return
 
-        # device_token 발급
-        response = requests.post(
-            f"{config.SERVER_URL}/api/auth/device",
-            json={"deviceName": device_name, "deviceType": "PC"},
-            headers={"Authorization": f"Bearer {access_token}"},
-            timeout=10
-        )
-        if response.status_code == 200:
-            data = response.json()
-            config.save_token(data["deviceToken"])
-            config.save_device_id(data["deviceId"])
-            print(f"[기기] 등록 완료 - ID: {data['deviceId']}")
-        else:
-            print(f"[오류] 기기 등록 실패: {response.status_code}")
+    data = _register_device(access_token, device_name)
+    if not data:
+        return
 
-    except requests.RequestException as e:
-        print(f"[오류] 서버 연결 실패: {e}")
+    config.save_token(data["deviceToken"])
+    config.save_device_id(data["deviceId"])
+    print(f"[기기] 등록 완료 - ID: {data['deviceId']}")
 
 
 # ── 메인 ──────────────────────────────────────────
@@ -404,7 +397,7 @@ def run():
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("사용법:")
-        print("  python agent.py login <email> <password> <device_name>")
+        print("  python agent.py login <device_name>")
         print("  python agent.py start <ONLINE|OFFLINE> [target_sec]")
         print("  python agent.py end")
         print("  python agent.py run")
@@ -413,7 +406,7 @@ if __name__ == "__main__":
     command = sys.argv[1]
 
     if command == "login":
-        login(sys.argv[2], sys.argv[3], sys.argv[4])
+        login(sys.argv[2])
 
     elif command == "start":
         study_type = sys.argv[2] if len(sys.argv) > 2 else "ONLINE"
