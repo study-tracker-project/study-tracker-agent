@@ -1,4 +1,6 @@
 # agent.py
+import os
+import sys
 import time
 import ctypes
 import threading
@@ -12,6 +14,7 @@ import win32con
 import psutil
 import requests
 import schedule
+from google_auth_oauthlib.flow import InstalledAppFlow
 
 import config
 import buffer
@@ -271,6 +274,34 @@ def end_session():
         print(f"[오류] 서버 연결 실패: {e}")
 
 
+def _require_oauth_env() -> tuple[str, str]:
+    """Google OAuth 데스크톱 앱 클라이언트 정보를 환경변수에서 읽는다. 없으면 안내 후 종료."""
+    client_id = os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
+    if not client_id:
+        print("[오류] GOOGLE_OAUTH_CLIENT_ID 환경변수가 설정되어 있지 않습니다.")
+        sys.exit(1)
+
+    client_secret = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
+    if not client_secret:
+        print("[오류] GOOGLE_OAUTH_CLIENT_SECRET 환경변수가 설정되어 있지 않습니다.")
+        sys.exit(1)
+
+    return client_id, client_secret
+
+
+def _build_client_config(client_id: str, client_secret: str) -> dict:
+    """InstalledAppFlow.from_client_config()에 넘길 데스크톱 앱 클라이언트 설정."""
+    return {
+        "installed": {
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "redirect_uris": ["http://localhost"]
+        }
+    }
+
+
 # ── 로그인 ────────────────────────────────────────
 
 def login(email: str, password: str, device_name: str):
@@ -331,8 +362,6 @@ def run():
 
 
 if __name__ == "__main__":
-    import sys
-
     if len(sys.argv) < 2:
         print("사용법:")
         print("  python agent.py login <email> <password> <device_name>")

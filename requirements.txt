@@ -3,3 +3,4 @@ requests
 schedule
 keyring
 psutil
+google-auth-oauthlib
