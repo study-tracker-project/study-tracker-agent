@@ -318,8 +318,15 @@ def _login_with_id_token(id_token: str) -> Optional[str]:
         print(f"[오류] 로그인 실패: {response.status_code}")
         return None
 
+    try:
+        data = response.json()
+        access_token = data["accessToken"]
+    except (ValueError, KeyError) as e:
+        print(f"[오류] 서버 응답 형식이 올바르지 않습니다: {e}")
+        return None
+
     print("[로그인] 성공")
-    return response.json()["accessToken"]
+    return access_token
 
 
 def _register_device(access_token: str, device_name: str) -> Optional[dict]:
@@ -339,37 +346,55 @@ def _register_device(access_token: str, device_name: str) -> Optional[dict]:
         print(f"[오류] 기기 등록 실패: {response.status_code}")
         return None
 
-    return response.json()
+    try:
+        return response.json()
+    except ValueError as e:
+        print(f"[오류] 서버 응답 형식이 올바르지 않습니다: {e}")
+        return None
 
 
 # ── 로그인 ────────────────────────────────────────
 
-def login(device_name: str):
+def login(device_name: str) -> bool:
     """Google OAuth 로그인 + device_token 발급"""
     client_id, client_secret = _require_oauth_env()
 
     flow = InstalledAppFlow.from_client_config(
         _build_client_config(client_id, client_secret),
-        scopes=["openid", "email", "profile"]
+        scopes=["openid",
+                "https://www.googleapis.com/auth/userinfo.email",
+                "https://www.googleapis.com/auth/userinfo.profile"]
     )
 
     try:
         credentials = flow.run_local_server(port=0)
     except Exception as e:
         print(f"[오류] Google 로그인 실패: {e}")
-        return
+        return False
+
+    if not credentials.id_token:
+        print("[오류] Google 응답에 ID 토큰이 없습니다. openid 스코프가 요청되었는지 확인하세요.")
+        return False
 
     access_token = _login_with_id_token(credentials.id_token)
     if not access_token:
-        return
+        return False
 
     data = _register_device(access_token, device_name)
     if not data:
-        return
+        return False
 
-    config.save_token(data["deviceToken"])
-    config.save_device_id(data["deviceId"])
-    print(f"[기기] 등록 완료 - ID: {data['deviceId']}")
+    try:
+        device_token = data["deviceToken"]
+        device_id = data["deviceId"]
+    except KeyError as e:
+        print(f"[오류] 서버 응답 형식이 올바르지 않습니다: {e}")
+        return False
+
+    config.save_token(device_token)
+    config.save_device_id(device_id)
+    print(f"[기기] 등록 완료 - ID: {device_id}")
+    return True
 
 
 # ── 메인 ──────────────────────────────────────────
@@ -406,7 +431,11 @@ if __name__ == "__main__":
     command = sys.argv[1]
 
     if command == "login":
-        login(sys.argv[2])
+        if len(sys.argv) < 3:
+            print("[오류] device_name이 필요합니다. 사용법: python agent.py login <device_name>")
+            sys.exit(1)
+        success = login(sys.argv[2])
+        sys.exit(0 if success else 1)
 
     elif command == "start":
         study_type = sys.argv[2] if len(sys.argv) > 2 else "ONLINE"
