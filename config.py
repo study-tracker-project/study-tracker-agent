@@ -2,7 +2,7 @@
 import keyring
 
 SERVICE_NAME = "study-tracker-agent"
-SERVER_URL = "http://localhost:8080"  # 나중에 AWS 배포 후 변경
+SERVER_URL = "https://api.studytracker.cloud"
 
 def save_token(token: str):
     keyring.set_password(SERVICE_NAME, "device_token", token)
