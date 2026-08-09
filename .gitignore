@@ -8,3 +8,8 @@ buffer.db
 # venv
 venv/
 .venv/
+
+# PyInstaller build output
+build/
+dist/
+*.spec
