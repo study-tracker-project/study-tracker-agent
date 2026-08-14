@@ -1,4 +1,3 @@
-# config.py
 import keyring
 
 SERVICE_NAME = "study-tracker-agent"

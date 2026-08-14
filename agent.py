@@ -1,4 +1,3 @@
-# agent.py
 import os
 import sys
 import time
@@ -21,27 +20,21 @@ import buffer
 import classifier
 import tray
 
-# ── 상수 ──────────────────────────────────────────
-POLL_INTERVAL = 5        # 앱 감지 주기 (초)
-SEND_INTERVAL = 60       # 서버 전송 주기 (초)
-IDLE_THRESHOLD = 30      # 유휴 판단 기준 (초)
+POLL_INTERVAL = 5
+SEND_INTERVAL = 60
+IDLE_THRESHOLD = 30
 
-# ── 상태 변수 ─────────────────────────────────────
 current_session_id: Optional[int] = None
 current_study_type: str = "ONLINE"
 is_running: bool = False
 
-# 현재 앱 포커스 누적 (1분 배치용)
 app_batch: list = []
 last_app: Optional[str] = None
 last_window: Optional[str] = None
 last_poll_time: Optional[datetime] = None
 
 
-# ── OS API ────────────────────────────────────────
-
 def get_active_app() -> tuple[str, str]:
-    """현재 포커스된 앱 이름과 창 제목 반환"""
     try:
         hwnd = win32gui.GetForegroundWindow()
         _, pid = win32process.GetWindowThreadProcessId(hwnd)
@@ -54,7 +47,6 @@ def get_active_app() -> tuple[str, str]:
 
 
 def get_idle_sec() -> int:
-    """마지막 입력 후 경과 시간 (초) 반환"""
     try:
         class LASTINPUTINFO(ctypes.Structure):
             _fields_ = [("cbSize", ctypes.c_uint), ("dwTime", ctypes.c_uint)]
@@ -72,10 +64,7 @@ def is_idle() -> bool:
     return get_idle_sec() >= IDLE_THRESHOLD
 
 
-# ── 서버 통신 ─────────────────────────────────────
-
 def send_activity_logs(logs: list) -> bool:
-    """앱 활동 로그 서버 전송"""
     token = config.get_token()
     device_id = config.get_device_id()
     session_id = config.get_session_id()
@@ -102,7 +91,6 @@ def send_activity_logs(logs: list) -> bool:
 
 
 def flush_buffer():
-    """로컬 버퍼에 쌓인 미전송 로그 재전송"""
     pending = buffer.get_pending_logs()
     for row in pending:
         log_id, log_type, data = row
@@ -114,10 +102,7 @@ def flush_buffer():
             break  # 실패하면 중단 (순서 보장)
 
 
-# ── 배치 전송 ─────────────────────────────────────
-
 def send_batch():
-    """1분마다 누적된 로그 배치 전송"""
     global app_batch
 
     if not app_batch or not config.get_session_id():
@@ -128,7 +113,6 @@ def send_batch():
 
     success = send_activity_logs(logs_to_send)
     if not success:
-        # 전송 실패 시 로컬 버퍼에 저장
         buffer.save_log("activity", {
             "logs": logs_to_send
         })
@@ -136,15 +120,11 @@ def send_batch():
     else:
         print(f"[전송] {len(logs_to_send)}개 로그 전송 완료")
 
-    # 버퍼 재전송 시도
     if buffer.get_pending_count() > 0:
         flush_buffer()
 
 
-# ── 폴링 루프 ─────────────────────────────────────
-
 def poll():
-    """5초마다 현재 앱 감지 및 배치 누적"""
     global last_app, last_window, last_poll_time
 
     if not config.get_session_id():
@@ -154,12 +134,10 @@ def poll():
     idle = is_idle()
     app_name, window_title = get_active_app()
 
-    # 이전 폴링과 같은 앱이면 duration 누적
     if (last_app == app_name and
             last_poll_time and
             (now - last_poll_time).seconds < POLL_INTERVAL * 2):
 
-        # 마지막 항목에 duration 추가
         if app_batch and app_batch[-1]["appName"] == app_name:
             app_batch[-1]["durationSec"] += POLL_INTERVAL
         else:
@@ -171,7 +149,6 @@ def poll():
                 "isIdle": idle
             })
     else:
-        # 새 앱으로 전환됨
         app_batch.append({
             "appName": app_name,
             "windowTitle": window_title,
@@ -187,10 +164,7 @@ def poll():
     print(f"[감지] {app_name} | 유휴: {idle} | 배치: {len(app_batch)}개")
 
 
-# ── 세션 관리 ─────────────────────────────────────
-
 def start_session(study_type: str, target_sec: Optional[int] = None):
-    """세션 시작"""
     global current_study_type
 
     token = config.get_token()
@@ -220,7 +194,6 @@ def start_session(study_type: str, target_sec: Optional[int] = None):
         print(f"[오류] 서버 연결 실패: {e}")
 
 def sync_active_session():
-    """서버에 현재 활성 세션을 물어보고 로컬 session_id를 동기화"""
     token = config.get_token()
     if not token:
         return
@@ -246,7 +219,6 @@ def sync_active_session():
         pass  # 네트워크 오류는 무시하고 다음 주기에 재시도
 
 def end_session():
-    """세션 종료"""
     session_id = config.get_session_id()
     token = config.get_token()
 
@@ -254,7 +226,6 @@ def end_session():
         print("[오류] 진행 중인 세션이 없습니다.")
         return
 
-    # 남은 배치 전송
     send_batch()
 
     try:
@@ -304,7 +275,6 @@ def _build_client_config(client_id: str, client_secret: str) -> dict:
 
 
 def _login_with_id_token(id_token: str) -> Optional[str]:
-    """ID 토큰을 백엔드로 보내 서비스 액세스 토큰을 받는다. 실패 시 None."""
     try:
         response = requests.post(
             f"{config.SERVER_URL}/api/auth/google",
@@ -331,7 +301,6 @@ def _login_with_id_token(id_token: str) -> Optional[str]:
 
 
 def _register_device(access_token: str, device_name: str) -> Optional[dict]:
-    """액세스 토큰으로 기기를 등록하고 device_token/device_id를 받는다. 실패 시 None."""
     try:
         response = requests.post(
             f"{config.SERVER_URL}/api/auth/device",
@@ -354,10 +323,7 @@ def _register_device(access_token: str, device_name: str) -> Optional[dict]:
         return None
 
 
-# ── 로그인 ────────────────────────────────────────
-
 def login(device_name: str) -> bool:
-    """Google OAuth 로그인 + device_token 발급"""
     client_id, client_secret = _require_oauth_env()
 
     flow = InstalledAppFlow.from_client_config(
@@ -398,17 +364,14 @@ def login(device_name: str) -> bool:
     return True
 
 
-# ── 메인 ──────────────────────────────────────────
-
 def _register_schedule():
     """폴링/전송/세션동기화 스케줄 등록 (콘솔 모드 run()과 트레이 모드 공용)"""
     schedule.every(POLL_INTERVAL).seconds.do(poll)
     schedule.every(SEND_INTERVAL).seconds.do(send_batch)
-    schedule.every(60).seconds.do(sync_active_session) # 60초 마다 현재 작동중인 sessionId 추적
+    schedule.every(60).seconds.do(sync_active_session)
 
 
 def run():
-    """에이전트 메인 루프"""
     buffer.init_db()
     _register_schedule()
 

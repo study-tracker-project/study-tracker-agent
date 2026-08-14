@@ -1,4 +1,3 @@
-# tray.py
 """시스템 트레이 상주 모드.
 
 콘솔 창 없이 백그라운드에서 계속 실행되며, 트레이 아이콘 메뉴에서
@@ -80,7 +79,6 @@ def run_tray():
 
     _hide_console()
 
-    # 자동 시작에 대해 사용자가 명시적으로 결정한 적이 없으면 기본값으로 켠다.
     if config.get_autostart_preference() is None:
         enable_autostart()
 

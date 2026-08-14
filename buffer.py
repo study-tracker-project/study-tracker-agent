@@ -1,4 +1,3 @@
-# buffer.py
 import sqlite3
 import json
 import os
@@ -20,7 +19,6 @@ def init_db():
     conn.close()
 
 def save_log(log_type: str, data: dict):
-    """서버 전송 실패 시 로컬에 저장"""
     conn = sqlite3.connect(DB_PATH)
     conn.execute(
         "INSERT INTO pending_logs (log_type, data, created_at) VALUES (?, ?, ?)",
@@ -30,7 +28,6 @@ def save_log(log_type: str, data: dict):
     conn.close()
 
 def get_pending_logs() -> list:
-    """미전송 로그 목록 조회"""
     conn = sqlite3.connect(DB_PATH)
     rows = conn.execute(
         "SELECT id, log_type, data FROM pending_logs ORDER BY id ASC"
@@ -39,7 +36,6 @@ def get_pending_logs() -> list:
     return rows
 
 def delete_log(log_id: int):
-    """전송 성공한 로그 삭제"""
     conn = sqlite3.connect(DB_PATH)
     conn.execute("DELETE FROM pending_logs WHERE id = ?", (log_id,))
     conn.commit()

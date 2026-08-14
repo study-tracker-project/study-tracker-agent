@@ -1,5 +1,3 @@
-# classifier.py
-
 # 기본 STUDY 앱 목록 (추후 수정 필요[06.17]
 STUDY_APPS = {
     "idea64.exe", "code.exe", "pycharm64.exe",
@@ -8,7 +6,6 @@ STUDY_APPS = {
     "excel.exe", "powerpnt.exe"
 }
 
-# 기본 DISTRACT 앱 목록
 DISTRACT_APPS = {
     "kakaotalk.exe", "discord.exe", "steam.exe",
     "epicgameslauncher.exe", "leagueoflegends.exe"
@@ -20,7 +17,6 @@ NEUTRAL_APPS = {
     "calc.exe", "clock.exe"
 }
 
-# 기본 STUDY 도메인
 STUDY_DOMAINS = {
     "github.com", "stackoverflow.com", "inflearn.com",
     "velog.io", "notion.so", "medium.com", "docs.spring.io",
@@ -28,7 +24,6 @@ STUDY_DOMAINS = {
     "programmers.co.kr", "acmicpc.net"
 }
 
-# 기본 DISTRACT 도메인
 DISTRACT_DOMAINS = {
     "instagram.com", "youtube.com", "tiktok.com",
     "netflix.com", "twitter.com", "x.com", "facebook.com",
@@ -37,7 +32,6 @@ DISTRACT_DOMAINS = {
 
 
 def classify_app(app_name: str, is_idle: bool, study_type: str) -> str:
-    """앱 이름으로 카테고리 분류"""
     if is_idle:
         return "STUDY" if study_type == "OFFLINE" else "IDLE"
 
@@ -54,7 +48,6 @@ def classify_app(app_name: str, is_idle: bool, study_type: str) -> str:
 
 
 def classify_domain(domain: str) -> str:
-    """도메인으로 카테고리 분류"""
     domain_lower = domain.lower()
 
     if domain_lower in STUDY_DOMAINS:
@@ -66,12 +59,10 @@ def classify_domain(domain: str) -> str:
 
 
 def extract_domain(url: str) -> str:
-    """URL에서 도메인 추출"""
     try:
         from urllib.parse import urlparse
         parsed = urlparse(url)
         domain = parsed.netloc
-        # www. 제거
         if domain.startswith("www."):
             domain = domain[4:]
         return domain
