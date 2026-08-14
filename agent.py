@@ -19,6 +19,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 import config
 import buffer
 import classifier
+import tray
 
 # ── 상수 ──────────────────────────────────────────
 POLL_INTERVAL = 5        # 앱 감지 주기 (초)
@@ -399,14 +400,17 @@ def login(device_name: str) -> bool:
 
 # ── 메인 ──────────────────────────────────────────
 
-def run():
-    """에이전트 메인 루프"""
-    buffer.init_db()
-
-    # 스케줄 등록
+def _register_schedule():
+    """폴링/전송/세션동기화 스케줄 등록 (콘솔 모드 run()과 트레이 모드 공용)"""
     schedule.every(POLL_INTERVAL).seconds.do(poll)
     schedule.every(SEND_INTERVAL).seconds.do(send_batch)
     schedule.every(60).seconds.do(sync_active_session) # 60초 마다 현재 작동중인 sessionId 추적
+
+
+def run():
+    """에이전트 메인 루프"""
+    buffer.init_db()
+    _register_schedule()
 
     sync_active_session()  # ← 시작 시 즉시 1회 동기화
 
@@ -426,6 +430,7 @@ if __name__ == "__main__":
         print("  python agent.py start <ONLINE|OFFLINE> [target_sec]")
         print("  python agent.py end")
         print("  python agent.py run")
+        print("  python agent.py tray   (시스템 트레이 상주 모드, 일반 사용자용)")
         sys.exit(1)
 
     command = sys.argv[1]
@@ -447,6 +452,9 @@ if __name__ == "__main__":
 
     elif command == "run":
         run()
+
+    elif command == "tray":
+        tray.run_tray()
 
     else:
         print(f"[오류] 알 수 없는 명령어: {command}")

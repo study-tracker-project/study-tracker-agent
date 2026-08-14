@@ -26,3 +26,9 @@ def get_session_id() -> int | None:
 
 def clear_session_id():
     keyring.delete_password(SERVICE_NAME, "session_id")
+
+def save_autostart_preference(value: str):
+    keyring.set_password(SERVICE_NAME, "autostart_preference", value)
+
+def get_autostart_preference() -> str | None:
+    return keyring.get_password(SERVICE_NAME, "autostart_preference")

@@ -4,3 +4,5 @@ schedule
 keyring
 psutil
 google-auth-oauthlib
+pystray
+Pillow
