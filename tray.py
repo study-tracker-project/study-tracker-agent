@@ -7,6 +7,7 @@
 기본 ON이 맞고, 대신 트레이 아이콘으로 항상 실행 상태를 보여주고
 언제든 한 번에 끌 수 있게 해서 신뢰를 확보하는 방식.
 """
+import atexit
 import ctypes
 import os
 import sys
@@ -85,6 +86,7 @@ def run_tray():
     buffer.init_db()
     agent._register_schedule()
     agent.sync_active_session()
+    atexit.register(agent.send_batch)
 
     stop_event = threading.Event()
 
@@ -103,6 +105,7 @@ def run_tray():
 
     def _on_quit(icon, item):
         stop_event.set()
+        agent.send_batch()
         icon.stop()
 
     image = Image.open(_resource_path("icon.png"))
