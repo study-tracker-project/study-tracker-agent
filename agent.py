@@ -24,6 +24,13 @@ POLL_INTERVAL = 5
 SEND_INTERVAL = 60
 IDLE_THRESHOLD = 30
 
+# 브라우저 사용 시간은 크롬 익스텐션이 도메인 단위로 기록한다. 에이전트가 같은
+# 시간을 "chrome.exe"로 또 보내면 세션 시간이 이중 집계되므로 아예 무시한다.
+BROWSER_APPS = {
+    "chrome.exe", "msedge.exe", "firefox.exe", "whale.exe",
+    "brave.exe", "opera.exe", "vivaldi.exe", "iexplore.exe",
+}
+
 current_session_id: Optional[int] = None
 current_study_type: str = "ONLINE"
 is_running: bool = False
@@ -133,6 +140,9 @@ def poll():
     now = datetime.now()
     idle = is_idle()
     app_name, window_title = get_active_app()
+
+    if app_name in BROWSER_APPS:
+        return
 
     if (last_app == app_name and
             last_poll_time and
