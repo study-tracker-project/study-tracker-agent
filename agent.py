@@ -257,7 +257,17 @@ def end_session():
 
 
 def _require_oauth_env() -> tuple[str, str]:
-    """Google OAuth 데스크톱 앱 클라이언트 정보를 환경변수에서 읽는다. 없으면 안내 후 종료."""
+    """Google OAuth 데스크톱 앱 클라이언트 정보를 구한다.
+    빌드 시 oauth_secret.py(gitignore, 로컬 전용)가 있으면 그 값을 쓰고,
+    없으면 환경변수를 본다. 데스크톱 앱 클라이언트 시크릿은 배포되는
+    바이너리에 어차피 들어가므로(Google도 이를 비밀로 취급하지 않음)
+    빌드 시 박아두면 최종 사용자는 환경변수를 따로 설정할 필요가 없다."""
+    try:
+        from oauth_secret import GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET
+        return GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET
+    except ImportError:
+        pass
+
     client_id = os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
     if not client_id:
         print("[오류] GOOGLE_OAUTH_CLIENT_ID 환경변수가 설정되어 있지 않습니다.")

@@ -5,6 +5,9 @@ __pycache__/
 # Local data
 buffer.db
 
+# Google OAuth 데스크톱 클라이언트 정보 (로컬 빌드 전용, 절대 커밋 금지)
+oauth_secret.py
+
 # venv
 venv/
 .venv/
